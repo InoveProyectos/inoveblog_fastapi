@@ -31,18 +31,28 @@ document.querySelector("#publicar").onclick = async () => {
         },
         body: JSON.stringify(data)
     })
-    .then(response => window.location.reload(true))
+    .then(response => {
+        if(response.ok) {
+             window.location.reload(true)
+        }
+        else {
+            alert(response.statusText)
+        }
+    })
     .catch(error => console.error('Error:', error))
 }
 
 
 fetch(`${url}/${username}`)
     .then(response => response.json())
-    .then(data => data)
     .then(posts => {
         let accumulator = ""
-        
-        posts.forEach(post => {
+
+        // Leer los últimos elementos primero:
+        const reversedArray = posts.reverse();
+
+        // Solo leer los últimos 3 elementos
+        reversedArray.slice(0, 3).forEach(post => {
             accumulator += 
                 `
                 <div>

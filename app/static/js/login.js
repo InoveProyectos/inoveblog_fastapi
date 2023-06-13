@@ -12,18 +12,23 @@ document.querySelector("#ingresar").onclick = async () => {
     }
 
     let formData = new FormData();
-    const url = document.querySelector("#ingresar").getAttribute("path");
+    const url = "/api/v1.0/login";
     
     formData.append("usuario", usuario);
     formData.append("password", password);
     
-    fetch(`${url}/${usuario}`, {
+    fetch(url, {
         method: 'POST',
         body: formData,
     })
     .then(response => {
-        localStorage.blogUsername = usuario
-        window.location.href = "/";
+        if(response.ok) {
+            localStorage.blogUsername = usuario
+            window.location.href = "/";
+        }
+        else {
+            alert(response.statusText)
+        }
     }
     )
     .catch(error => console.error('Error:', error))

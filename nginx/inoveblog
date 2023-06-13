@@ -20,6 +20,6 @@ server {
     }
 
     location /static  {
-      alias /home/inoveblog_fastapi/static;
+      alias /home/inoveblog_fastapi/app/static;
     }
 }

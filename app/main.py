@@ -7,6 +7,7 @@ from database import Base, engine, get_db
 from sqlalchemy.orm import Session
 from crud import get_user, create_user, get_posteos, create_posteo, get_posteo, update_posteo, delete_posteos
 from schemas import PosteoSchema
+from auth.AuthHandler import auth_handler
 
 # Create database
 Base.metadata.create_all(bind=engine)
@@ -120,6 +121,97 @@ def eliminar_posteo(usuario: str, posteo_id: int, db: Session = Depends(get_db))
     user = get_user(db, usuario)
     if user is None:
         raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    
+    delete_posteos(db, user, posteo_id)
+
+    return {"posteo_eliminado": posteo_id}
+
+
+# ---------------- AUTH API ------------------------
+
+@app.post("/api/v1.0/auth/login", tags=["auth"])
+def login(usuario: str = Form(), password: str = Form(), db: Session = Depends(get_db)):
+    if password != settings.LOGIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Password incorrecta")
+    
+    user = get_user(db, usuario) 
+    if user is None:
+        user = create_user(db, usuario)
+
+    token = auth_handler.encode_token(user.id)
+    return {"usuario": usuario, "token": token, "token_type": "bearer"}
+
+
+@app.post("/api/v1.0/auth/posteos/{usuario}", tags=["auth"])
+def crear_posteo(usuario: str, posteo: PosteoSchema, db: Session = Depends(get_db), user_id=Depends(auth_handler.auth_wrapper)):
+    user = get_user(db, usuario)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    if user.id != user_id:
+        raise HTTPException(status_code=401, detail="El token no pertenece al usuario")
+    
+    posteo = create_posteo(db, user, posteo.titulo, posteo.texto).serialize()
+    posteo["usuario"] = usuario
+    return posteo
+
+
+@app.get("/api/v1.0/auth/posteos/{usuario}", tags=["auth"])
+def leer_posteos(usuario: str, db: Session = Depends(get_db), user_id=Depends(auth_handler.auth_wrapper)):
+    user = get_user(db, usuario)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    if user.id != user_id:
+        raise HTTPException(status_code=401, detail="El token no pertenece al usuario")
+    
+    posteos = []
+    for posteo in get_posteos(db, user):
+        data = posteo.serialize()
+        data["usuario"] = usuario
+        posteos.append(data)
+
+    return posteos
+
+
+@app.get("/api/v1.0/auth/posteos/{usuario}/detail/{posteo_id}", tags=["auth"])
+def leer_posteo(usuario: str, posteo_id: int, db: Session = Depends(get_db), user_id=Depends(auth_handler.auth_wrapper)):
+    user = get_user(db, usuario)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    if user.id != user_id:
+        raise HTTPException(status_code=401, detail="El token no pertenece al usuario")
+
+    posteo = get_posteo(db, user, posteo_id)
+    if posteo is None:
+        raise HTTPException(status_code=404, detail="Posteo no encontrado")
+
+    data = posteo.serialize()
+    data["usuario"] = usuario
+    return data
+
+
+@app.put("/api/v1.0/auth/posteos/{usuario}/update/{posteo_id}", tags=["auth"])
+def actualizar_posteo(usuario: str, posteo_id: int, posteo: PosteoSchema, db: Session = Depends(get_db), user_id=Depends(auth_handler.auth_wrapper)):
+    user = get_user(db, usuario)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    if user.id != user_id:
+        raise HTTPException(status_code=401, detail="El token no pertenece al usuario")
+    
+    posteo = update_posteo(db, user, posteo_id, posteo.titulo, posteo.texto)
+    if posteo is None:
+        raise HTTPException(status_code=404, detail="Posteo no encontrado")
+    
+    data = posteo.serialize()
+    data["usuario"] = usuario
+    return data
+
+@app.delete("/api/v1.0/auth/posteos/{usuario}/delete/{posteo_id}", tags=["auth"])
+def eliminar_posteo(usuario: str, posteo_id: int, db: Session = Depends(get_db), user_id=Depends(auth_handler.auth_wrapper)):
+    user = get_user(db, usuario)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+    if user.id != user_id:
+        raise HTTPException(status_code=401, detail="El token no pertenece al usuario")
     
     delete_posteos(db, user, posteo_id)
 

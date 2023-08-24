@@ -223,4 +223,4 @@ if __name__ == "__main__":
     # main --> es el nombre del archivo
     # app --> es el nombre de la variable creada como FastAPI()
     # uvicorn es el servidor web
-    uvicorn.run('main:app', host="127.0.0.1", port=8000, reload=True)
+    #uvicorn.run('main:app', host="127.0.0.1", port=8000, reload=True)
